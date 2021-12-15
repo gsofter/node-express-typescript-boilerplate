@@ -1,0 +1,36 @@
+# These values are auto-populated during the build process
+endpointVersion: ""
+projectID: ""
+
+appProjectID: "ffnproject-c88a065d3d82"
+
+replicaCount: 2
+
+endpointServiceName: growth-partners-api-dev
+
+configMapVars:
+  APP_DEBUG: ""
+
+dbInstance: ""
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    kubernetes.io/tls-acme: "true"
+    certmanager.k8s.io/cluster-issuer: letsencrypt-cluster-issuer
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+  rules:
+    - host: growth-partners-api.dev.ffngcp.com
+      path: /
+      svc: growth-partners-api
+      port: 8080
+  tls:
+    - secretName: growth-partners-api-tls
+      hosts:
+      - growth-partners-api.dev.ffngcp.com

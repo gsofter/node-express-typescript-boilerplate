@@ -1,0 +1,87 @@
+image:
+  name: gcr.io/ffn-cicd-prod-01/pipeline:1.3
+  username: "$PIPELINE_USERNAME"
+  password: "$PIPELINE_PASSWORD"
+
+pipelines:
+  default:
+    - step: &validate
+        name: Validate
+        script:
+          - helm_validate.sh
+  custom:
+    build/dev:
+      - step: *validate
+      - step:
+          name: Bake & Release
+          script:
+            - export VERSION="$(cat version.txt)"
+            - image_bake.sh -f Dockerfile .
+            - helm_release.sh
+          services:
+            - docker
+      - step:
+          name: Deploy Dev
+          deployment: test
+          script:
+            - export VERSION="$(cat version.txt)"
+            - helm_deploy.sh development
+          services:
+            - docker
+    build/dev/skiptest:
+      - step: *validate
+      - step:
+          name: Bake & Release
+          script:
+            - export VERSION="$(cat version.txt)"
+            - image_bake.sh -f Dockerfile .
+            - helm_release.sh
+          services:
+            - docker
+      - step:
+          name: Deploy Dev
+          deployment: test
+          script:
+            - export VERSION="$(cat version.txt)"
+            - helm_deploy.sh development
+          services:
+            - docker
+  branches:
+    master:
+      - step: *validate
+      - step:
+          name: Bake & Release
+          script:
+            - export VERSION="$(cat version.txt)"
+            - image_bake.sh -f Dockerfile .
+            - helm_release.sh
+          services:
+            - docker
+      - step:
+          name: Deploy Dev
+          deployment: test
+          script:
+            - export VERSION="$(cat version.txt)"
+            - helm_deploy.sh development
+          services:
+            - docker
+      - step:
+          name: Deploy Stg
+          deployment: staging
+          trigger: manual
+          script:
+            - export VERSION="$(cat version.txt)"
+            - helm_deploy.sh staging
+          services:
+            - docker
+      - step:
+          name: Deploy Production
+          deployment: production
+          trigger: manual
+          script:
+            - export VERSION="$(cat version.txt)"
+            - image_promote.sh
+            - image_deploy.sh production
+            - helm_deploy.sh production
+          services:
+            - docker

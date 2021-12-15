@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "growth-partners-api.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "growth-partners-api.name" . }}
+    helm.sh/chart: {{ include "growth-partners-api.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app: {{ include "growth-partners-api.name" . }}
+    chart: {{ include "growth-partners-api.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    role: application
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "growth-partners-api.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app: {{ include "growth-partners-api.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.targetPort }}"
+        prometheus.io/path: "/metrics"
+      labels:
+        app.kubernetes.io/name: {{ include "growth-partners-api.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app: {{ include "growth-partners-api.name" . }}
+        chart: {{ include "growth-partners-api.chart" . }}
+        release: {{ .Release.Name }}
+        heritage: {{ .Release.Service }}
+    spec:
+      serviceAccountName: {{ include "growth-partners-api.name" . }}
+      automountServiceAccountToken: true
+      containers:
+      {{- if .Values.googleEndpoints.enabled }}
+        - name: {{ .Chart.Name }}-endpoints
+          image: gcr.io/endpoints-release/endpoints-runtime:1
+          args: [
+            "--http_port", "{{ .Values.googleEndpoints.targetPort }}",
+            "--backend", "127.0.0.1:{{ .Values.service.targetPort }}",
+            "--service", "{{ .Values.service.endpointServiceName }}.endpoints.{{ .Values.projectID }}.cloud.goog",
+            "--rollout_strategy", "fixed",
+            "--version", "{{ .Values.endpointVersion }}",
+            "-z", "healthz"
+          ]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi         
+          ports:
+            - containerPort: {{ .Values.googleEndpoints.targetPort }}
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+        {{ end }}
+        {{- if .Values.cloudsql.enabled }}
+        - name: {{ .Chart.Name }}-cloudsql
+          image: "gcr.io/cloudsql-docker/gce-proxy:1.14"
+          command:
+            - "/cloud_sql_proxy"
+            - "-instances={{ range .Values.cloudsql.instances }}{{ .connectionName }}=tcp:{{ .port }},{{ end }}"
+          ports:
+          {{- range .Values.cloudsql.instances }}
+            - containerPort: {{ .port }}
+              protocol: TCP
+          {{ end }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+        {{ end }}
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: api
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbePath }}
+              port: api
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 3
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbePath }}
+              port: api
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 3
+            successThreshold: 1
+            timeoutSeconds: 1
+          envFrom:
+            - configMapRef:
+                name: growth-partners-api-configmap
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

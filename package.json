@@ -1,0 +1,38 @@
+{
+  "name": "nodeseed",
+  "version": "1.0.0",
+  "description": "Node Seed Project with Express",
+  "main": "app.js",
+  "scripts": {
+    "start": "tsc && node dist/app.js",
+    "dev": "nodemon src/app.ts",
+    "build": "tsc -p .",
+    "test": "jest",
+    "prepare": "husky install",
+    "lint": "eslint src/**/*.ts",
+    "format": "eslint src/**/*.ts --fix"
+  },
+  "author": "Ahsan Imam",
+  "license": "ISC",
+  "dependencies": {
+    "@types/crypto-js": "^4.0.2",
+    "@typescript-eslint/eslint-plugin": "^5.6.0",
+    "@typescript-eslint/parser": "^5.6.0",
+    "crypto-js": "^4.1.1",
+    "dotenv": "^10.0.0",
+    "eslint": "^8.4.1",
+    "express": "^4.17.1",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/jest": "^27.0.3",
+    "@types/node": "^16.11.12",
+    "husky": "^7.0.4",
+    "jest": "^27.4.4",
+    "nodemon": "^2.0.15",
+    "ts-jest": "^27.1.1",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.3"
+  }
+}
